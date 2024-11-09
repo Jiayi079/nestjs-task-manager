@@ -1,99 +1,147 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# NestJS TypeScript Starter Project
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+This project is a NestJS-based API for managing events and users. It includes CRUD operations for tasks (events), functionality for handling event invitees, and a method to merge overlapping events for a user.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Requirements
 
-## Description
+- Node.js (>= 14.x)
+- NPM (>= 6.x)
+- MySQL (ensure you have it installed and running for database connectivity)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Getting Started
 
-## Project setup
+### 1. Clone the Repository
 
 ```bash
-$ npm install
+git clone https://github.com/Jiayi079/nestjs-task-manager.git
+cd nestjs-task-manager
 ```
 
-## Compile and run the project
+### 2. Install Dependencies
+
+Use npm to install the project dependencies:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
 ```
 
-## Run tests
+### 3. Configure Database
+
+Make sure your MySQL database is set up. Update the database configuration in `app.module.ts` or set up environment variables for your MySQL database.
+
+**Default Configuration** (found in `app.module.ts`):
+
+```typescript
+TypeOrmModule.forRoot({
+  type: 'mysql',
+  host: 'localhost',
+  port: 3306,
+  username: 'root',
+  password: 'root123',
+  database: 'nestjs_project',
+  entities: [Event, User],
+  synchronize: true, // Be cautious with synchronize in production!
+}),
+```
+
+### 4. Running the Application
+
+To start the application, use one of the following commands:
+
+ - For development mode (with hot reload):
+```bash
+ npm run start:dev
+ ```
+
+ - For production mode:
+ ```bash
+ npm run start:prod
+ ```
+
+ - Standard start:
+ ```bash
+ npm run start
+ ```
+
+ Once started, the server will run at `http://localhost:3000` by default. You can access API endpoints using this URL.
+
+## Testing
+
+### 1. Run Tests
+
+To run the automated tests and ensure everything works as expected:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm test
 ```
 
-## Deployment
+### 2. Explanation of Tests
+The tests are written in Jest and cover the following key functionalities of the application:
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+- **UserService Tests**:
+  - Ensures that `UserService` is properly defined.
+  - Tests that a new user can be created using `createUser` and that the returned user data matches expectations.
+  - Verifies that all users can be retrieved using `findAll`.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+- **EventService Tests**:
+  - Confirms that `EventService` is properly defined.
+  - Tests the creation of a new event to ensure it is saved to the database and that the returned event data is accurate.
+  - Verifies that an event can be retrieved by ID, including related invitees.
+  - Confirms that an event can be deleted by ID.
+  - Tests that when creating an event with invitees, corresponding records are automatically generated in the `event_invitees_user` table, correctly linking invitees to the event.
+  - Checks the `mergeAllOverlappingEvents` function to ensure that overlapping events for a user are identified, merged, and correctly saved, with invitees consolidated from the overlapping events.
 
-```bash
-$ npm install -g mau
-$ mau deploy
-```
+- **UserController Tests**:
+  - Ensures that `UserController` is properly defined.
+  - Tests that `createUser` in `UserController` successfully calls `UserService` to create a new user.
+  - Verifies that all users can be retrieved through `getAllUsers`.
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+- **EventController Tests**:
+  - Confirms that `EventController` is properly defined.
+  - Tests the creation of a new event using `createEvent`.
+  - Ensures that an event can be retrieved by ID using `getEvent`.
+  - Tests retrieving all events with `getAllEvents`.
+  - Verifies that an event can be deleted by ID using `deleteEvent`.
 
-## Resources
+These tests ensure that core functionalities—CRUD operations for users and events, invitee management, and merging overlapping events—are functioning as expected. Run these tests with `npm test` to validate the application’s behavior.
 
-Check out a few resources that may come in handy when working with NestJS:
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
 
-## Support
+## API Endpoints
+The main endpoints of the API are as follows:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+- User Endpoints:
 
-## Stay in touch
+  - `POST /users`: Create a new user.
+  - `GET /users`: Retrieve all users.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
 
-## License
+- Event Endpoints:
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+  - `POST /events`: Create a new event.
+  - `GET /events/:id`: Retrieve an event by ID.
+  - `GET /events`: Retrieve all events.
+  - `PATCH /events/:id`: Update an event by ID.
+  - `DELETE /events/:id`: Delete an event by ID.
+  - `GET /events/merge/:userId`: Merge all overlapping events for a user (merges overlapping time intervals).
+
+Use a tool like `Postman` or `curl` to test the endpoints manually.
+
+## Project Structure
+- **src/**: Main source code for the API.
+  - **src/event/**: Contains code related to event management:
+    - **event.entity.ts**: Defines the Event entity schema.
+    - **event.service.ts**: Provides business logic for events, including CRUD and merge operations.
+    - **event.controller.ts**: Handles incoming requests related to events and routes them to the service.
+    - **event.controller.spec.ts** and **event.service.spec.ts**: Automated test cases for the Event controller and service.
+  - **src/user/**: Contains code related to user management:
+    - **user.entity.ts**: Defines the User entity schema.
+    - **user.service.ts**: Provides business logic for user management.
+    - **user.controller.ts**: Handles incoming requests related to users and routes them to the service.
+    - **user.controller.spec.ts** and **user.service.spec.ts**: Automated test cases for the User controller and service.
+  - **app.controller.ts** and **app.service.ts**: Contains additional logic for the root application.
+  - **app.module.ts**: Root module that sets up the application, including TypeORM configuration.
+  - **main.ts**: Entry point of the application, which bootstraps the NestJS server.
+  
+- **test/**: (Currently unused) Placeholder for separate test-related files if needed in the future.
+
