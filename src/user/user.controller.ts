@@ -13,7 +13,10 @@ export class UserController {
     // return: the saved user object
     @Post()
     async createUser(@Body() userData: Partial<User>): Promise<User> {
-        return this.userService.create(userData);
+        // console.log('POST /users - Creating user with data:', userData);
+        const user = await this.userService.create(userData);
+        // console.log('User created and returned:', user);
+        return user;
     }
 
     // defines a GET endpoint at /users

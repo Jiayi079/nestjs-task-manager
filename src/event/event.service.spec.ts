@@ -40,7 +40,7 @@ describe('EventService', () => {
   it('should create a new event', async () => {
     const eventData: Partial<Event> = {
       title: 'New Event',
-      status: 'TODO',  // 'TODO' is now correctly typed as one of the allowed values
+      status: 'TODO' as 'TODO',  // Explicitly typing as allowed value
       startTime: new Date('2024-01-01T10:00:00Z'),
       endTime: new Date('2024-01-01T12:00:00Z'),
     };
@@ -170,5 +170,40 @@ describe('EventService', () => {
     expect(result[0].title).toBe('Meeting 1, Meeting 2');
     expect(result[0].startTime).toEqual(new Date('2024-01-01T10:00:00Z'));
     expect(result[0].endTime).toEqual(new Date('2024-01-01T11:30:00Z'));
+  });
+
+  // Test for updating an event by ID
+  it('should update an event by ID', async () => {
+    const eventId = 1;
+    const existingEvent = {
+      id: eventId,
+      title: 'Original Event',
+      status: 'TODO' as 'TODO',  // Ensure exact typing for status
+      startTime: new Date('2024-01-01T10:00:00Z'),
+      endTime: new Date('2024-01-01T12:00:00Z'),
+      invitees: [],
+    } as Event;
+
+    const updateData = {
+      title: 'Updated Event',
+      status: 'IN_PROGRESS' as 'IN_PROGRESS',  // Ensure exact typing for status
+    };
+
+    const updatedEvent = {
+      ...existingEvent,
+      ...updateData,
+    };
+
+    jest.spyOn(eventRepository, 'findOne').mockResolvedValue(updatedEvent);
+    jest.spyOn(eventRepository, 'update').mockResolvedValue({ affected: 1 } as any);
+
+    const result = await service.update(eventId, updateData);
+
+    expect(result).toEqual(updatedEvent);
+    expect(eventRepository.update).toHaveBeenCalledWith(eventId, updateData);
+    expect(eventRepository.findOne).toHaveBeenCalledWith({
+      where: { id: eventId },
+      relations: ['invitees'],
+    });
   });
 });

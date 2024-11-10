@@ -19,6 +19,7 @@ describe('EventController', () => {
             findAll: jest.fn(),
             update: jest.fn(),
             remove: jest.fn(),
+            mergeAllOverlappingEvents: jest.fn()
           },
         },
       ],
@@ -82,5 +83,61 @@ describe('EventController', () => {
 
     await controller.deleteEvent(eventId);
     expect(service.remove).toHaveBeenCalledWith(eventId);
+  });
+
+  // test for the updateEvent() method
+  it('should update an event by ID', async () => {
+    const eventId = 1;
+    const updateData = {
+      title: 'Updated Event',
+      status: 'IN_PROGRESS' as 'IN_PROGRESS',
+    };
+    const updatedEvent = {
+      id: eventId,
+      title: 'Updated Event',
+      status: 'IN_PROGRESS',
+      startTime: new Date('2024-01-01T10:00:00Z'),
+      endTime: new Date('2024-01-01T12:00:00Z'),
+      invitees: [],
+    } as Event;
+
+    jest.spyOn(service, 'update').mockResolvedValue(updatedEvent);
+
+    const result = await controller.updateEvent(eventId, updateData);
+
+    expect(result).toEqual(updatedEvent);
+    expect(service.update).toHaveBeenCalledWith(eventId, updateData);
+  });
+
+  // test for the mergeEventsForUser() method
+  it('should merge overlapping events for a user and return merged events', async () => {
+    const userId = 1;
+    const mergedEvents = [
+      {
+        id: 1,
+        title: 'Merged Event 1',
+        status: 'IN_PROGRESS',
+        startTime: new Date('2024-01-01T10:00:00Z'),
+        endTime: new Date('2024-01-01T12:00:00Z'),
+        invitees: [],
+      },
+      {
+        id: 2,
+        title: 'Merged Event 2',
+        status: 'IN_PROGRESS',
+        startTime: new Date('2024-01-02T10:00:00Z'),
+        endTime: new Date('2024-01-02T12:00:00Z'),
+        invitees: [],
+      },
+    ] as Event[];
+
+    // Mock the mergeAllOverlappingEvents method to return merged events
+    jest.spyOn(service, 'mergeAllOverlappingEvents').mockResolvedValue(mergedEvents);
+
+    const result = await controller.mergeEventsForUser(userId);
+
+    // Assert that the result matches the merged events
+    expect(result).toEqual(mergedEvents);
+    expect(service.mergeAllOverlappingEvents).toHaveBeenCalledWith(userId);
   });
 });
