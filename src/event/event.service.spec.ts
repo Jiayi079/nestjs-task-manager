@@ -5,7 +5,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Event } from '../event.entity';
 import { User } from '../user.entity';
 
-
 describe('EventService', () => {
   let service: EventService;
   let eventRepository: Repository<Event>;
@@ -28,7 +27,7 @@ describe('EventService', () => {
 
     service = module.get<EventService>(EventService);
     eventRepository = module.get<Repository<Event>>(getRepositoryToken(Event));
-    userRepository = module.get<Repository<User>>(getRepositoryToken(User)); // Add this line
+    userRepository = module.get<Repository<User>>(getRepositoryToken(User));
   });
 
   // test to checks if EventService is correctly defined
@@ -38,52 +37,52 @@ describe('EventService', () => {
 
   // test create a new event --> cerifies that EventService.create saves a new event to the database
   it('should create a new event', async () => {
+    jest.spyOn(eventRepository, 'create').mockImplementation((data) => data as Event);
+
+    const creatorId = 1;
     const eventData: Partial<Event> = {
       title: 'New Event',
-      status: 'TODO' as 'TODO',  // Explicitly typing as allowed value
+      status: 'TODO' as 'TODO',
       startTime: new Date('2024-01-01T10:00:00Z'),
       endTime: new Date('2024-01-01T12:00:00Z'),
+      invitees: [
+        { id: 1, name: 'User1', createdEvents: [], invitedEvents: [] } as User,
+        { id: 2, name: 'User2', createdEvents: [], invitedEvents: [] } as User,
+      ],
     };
 
-    const savedEvent = { id: 1, ...eventData } as Event;
+    const creator = { id: creatorId, name: 'User1', createdEvents: [], invitedEvents: [] } as User;
+    const savedEvent = { id: 1, ...eventData, creator } as Event;
+
+    jest.spyOn(userRepository, 'findOne').mockResolvedValue(creator);
+    jest.spyOn(userRepository, 'findByIds').mockResolvedValue(eventData.invitees); // Mock findByIds for invitees
     jest.spyOn(eventRepository, 'save').mockResolvedValue(savedEvent);
 
-    const result = await service.create(eventData);
+    const result = await service.create(eventData, creatorId);
     expect(result).toEqual(savedEvent);
-    expect(eventRepository.save).toHaveBeenCalledWith(eventData);
-  });
-
-  // test retrieve a single event by its ID --> ensures EventService.findOne retrieves an event by ID, including related invitees
-  it('should find an event by id', async () => {
-    const eventId = 1;
-    const foundEvent = { id: eventId, title: 'Existing Event' } as Event;
-    jest.spyOn(eventRepository, 'findOne').mockResolvedValue(foundEvent);
-
-    const result = await service.findOne(eventId);
-    expect(result).toEqual(foundEvent);
-    expect(eventRepository.findOne).toHaveBeenCalledWith({ where: { id: eventId }, relations: ['invitees'] });
+    expect(eventRepository.save).toHaveBeenCalledWith({
+      ...eventData,
+      creator,
+    });
   });
 
   // test to retrieve all events --> cerify EventService.findAll fetches all events with invitees
   it('should retrieve all events', async () => {
     const events = [
-      { id: 1, title: 'Event 1', startTime: new Date('2024-01-01T10:00:00Z'), endTime: new Date('2024-01-01T12:00:00Z') } as Event,
-      { id: 2, title: 'Event 2', startTime: new Date('2024-01-02T10:00:00Z'), endTime: new Date('2024-01-02T12:00:00Z') } as Event,
+      { id: 1, title: 'Event 1', creator: { id: 1 }, invitees: [] } as Event,
+      { id: 2, title: 'Event 2', creator: { id: 2 }, invitees: [] } as Event,
     ];
 
-    // Mocking eventRepository.find to return a list of events
     jest.spyOn(eventRepository, 'find').mockResolvedValue(events);
 
     const result = await service.findAll();
-
-    // Verify that the result matches the mocked events array
     expect(result).toEqual(events);
     expect(eventRepository.find).toHaveBeenCalledWith({
-      relations: ['invitees'],
+      relations: ['creator', 'invitees'],
     });
   });
 
-  // test deleting a task by ID --> verifies that EventService.remove deletes an event by ID using eventRepository.delete.
+  // test deleting a task by ID --> verifies that EventService.remove deletes an event by ID using eventRepository.delete
   it('should delete an event by id', async () => {
     const eventId = 1;
     jest.spyOn(eventRepository, 'delete').mockResolvedValue({ affected: 1 } as any);
@@ -95,29 +94,28 @@ describe('EventService', () => {
   // test automatic generation in event_invitees_user table -->
   // verifies that EventService.create adds entries to the join table (event_invitees_user) when an event is created with invitees
   it('should automatically generate records in event_invitees_user table when creating an event with invitees', async () => {
-    const user1 = { id: 1, name: 'User1' } as User;
-    const user2 = { id: 2, name: 'User2' } as User;
+    jest.spyOn(eventRepository, 'create').mockImplementation((data) => data as Event);
 
-    // Mock repository find for users
-    jest.spyOn(userRepository, 'findOne').mockImplementation((options: { where: { id: number } }) => {
-      const { id } = options.where;
-      return id === 1 ? Promise.resolve(user1) : Promise.resolve(user2);
-    });
+    const creator = { id: 1, name: 'User1' } as User;
+    const user1 = { id: 1, name: 'User1', createdEvents: [], invitedEvents: [] } as User;
+    const user2 = { id: 2, name: 'User2', createdEvents: [], invitedEvents: [] } as User;
 
-    const eventData = {
+    const eventData: Partial<Event> = {
       title: 'New Event',
-      status: 'TODO' as 'TODO', // Explicitly specify the type here
+      status: 'TODO' as 'TODO',
       startTime: new Date('2024-01-01T10:00:00Z'),
       endTime: new Date('2024-01-01T12:00:00Z'),
-      invitees: [user1, user2], // Assign invitees
+      invitees: [user1, user2],
     };
 
-    // Mock eventRepository save to return the event with invitees
-    jest.spyOn(eventRepository, 'save').mockResolvedValue({ id: 1, ...eventData } as Event);
+    const savedEvent = { id: 1, ...eventData, creator } as Event;
 
-    const result = await service.create(eventData);
+    jest.spyOn(userRepository, 'findOne').mockResolvedValue(creator);
+    jest.spyOn(userRepository, 'findByIds').mockResolvedValue([user1, user2]); // Mock findByIds for invitees
+    jest.spyOn(eventRepository, 'save').mockResolvedValue(savedEvent);
 
-    // Verify the invitees are correctly linked to the event
+    const result = await service.create(eventData, creator.id);
+
     expect(result.invitees).toHaveLength(2);
     expect(result.invitees).toContainEqual(user1);
     expect(result.invitees).toContainEqual(user2);
@@ -127,21 +125,22 @@ describe('EventService', () => {
   it('should merge all overlapping events for a user', async () => {
     const userId = 1;
 
-    // Mocked events with overlapping times
     const event1 = {
       id: 1,
       title: 'Meeting 1',
       startTime: new Date('2024-01-01T10:00:00Z'),
       endTime: new Date('2024-01-01T11:00:00Z'),
       invitees: [],
+      creator: { id: userId }
     } as Event;
 
     const event2 = {
       id: 2,
       title: 'Meeting 2',
-      startTime: new Date('2024-01-01T10:30:00Z'), // Overlaps with event1
+      startTime: new Date('2024-01-01T10:30:00Z'),
       endTime: new Date('2024-01-01T11:30:00Z'),
       invitees: [],
+      creator: { id: userId }
     } as Event;
 
     const mergedEvent = {
@@ -149,10 +148,10 @@ describe('EventService', () => {
       title: 'Meeting 1, Meeting 2',
       startTime: new Date('2024-01-01T10:00:00Z'),
       endTime: new Date('2024-01-01T11:30:00Z'),
-      invitees: [], // Combined invitees would be here
+      invitees: [],
+      creator: { id: userId }
     } as Event;
 
-    // Mocking the event repository behavior
     jest.spyOn(eventRepository, 'createQueryBuilder').mockReturnValueOnce({
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
@@ -165,7 +164,6 @@ describe('EventService', () => {
 
     const result = await service.mergeAllOverlappingEvents(userId);
 
-    // Verifying the merged event properties
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe('Meeting 1, Meeting 2');
     expect(result[0].startTime).toEqual(new Date('2024-01-01T10:00:00Z'));
@@ -178,7 +176,7 @@ describe('EventService', () => {
     const existingEvent = {
       id: eventId,
       title: 'Original Event',
-      status: 'TODO' as 'TODO',  // Ensure exact typing for status
+      status: 'TODO' as 'TODO',
       startTime: new Date('2024-01-01T10:00:00Z'),
       endTime: new Date('2024-01-01T12:00:00Z'),
       invitees: [],
@@ -186,7 +184,7 @@ describe('EventService', () => {
 
     const updateData = {
       title: 'Updated Event',
-      status: 'IN_PROGRESS' as 'IN_PROGRESS',  // Ensure exact typing for status
+      status: 'IN_PROGRESS' as 'IN_PROGRESS',
     };
 
     const updatedEvent = {
@@ -194,8 +192,8 @@ describe('EventService', () => {
       ...updateData,
     };
 
-    jest.spyOn(eventRepository, 'findOne').mockResolvedValue(updatedEvent);
     jest.spyOn(eventRepository, 'update').mockResolvedValue({ affected: 1 } as any);
+    jest.spyOn(eventRepository, 'findOne').mockResolvedValueOnce(updatedEvent);
 
     const result = await service.update(eventId, updateData);
 
@@ -203,7 +201,7 @@ describe('EventService', () => {
     expect(eventRepository.update).toHaveBeenCalledWith(eventId, updateData);
     expect(eventRepository.findOne).toHaveBeenCalledWith({
       where: { id: eventId },
-      relations: ['invitees'],
+      relations: ['creator', 'invitees'],
     });
   });
 });

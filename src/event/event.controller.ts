@@ -13,12 +13,18 @@ export class EventController {
     // request body: eventData
     // returns: the saved event
     @Post()
-    async createEvent(@Body() eventData: Partial<Event>): Promise<Event> {
-        // console.log('POST /events - Creating event with data:', eventData);
-        const event = await this.eventService.create(eventData);
-        // console.log('Event created and returned:', event);
-        return event;
+    async createEvent(@Body() eventData: Partial<Event>, @Body('creatorId') creatorId: number): Promise<Event> {
+        console.log('Creating event with data:', eventData, 'and creatorId:', creatorId);
+        try {
+            const event = await this.eventService.create(eventData, creatorId);
+            console.log('Event created successfully:', event);
+            return event;
+        } catch (error) {
+            console.error('Error creating event:', error.message);
+            throw error;
+        }
     }
+
 
     // define a GET endpoint at /events/:id
     // getEvent() method used to retrieve a specific event by ID

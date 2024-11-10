@@ -17,33 +17,62 @@ export class EventService {
     ) { }
 
     // create() method used to save the event data to eventRepository
-    async create(eventData: Partial<Event>): Promise<Event> {
-        // console.log('Creating event with data:', eventData);
-        const savedEvent = await this.eventRepository.save(eventData);
-        // console.log('Event saved:', savedEvent);
+    // EventService create method
+    async create(eventData: Partial<Event>, creatorId: number): Promise<Event> {
+        console.log('Creating a new event with data:', eventData);
+
+        // Fetch the creator from the database
+        const creator = await this.userRepository.findOne({ where: { id: creatorId } });
+        if (!creator) {
+            throw new NotFoundException(`User with ID ${creatorId} not found`);
+        }
+
+        // If invitees are provided, fetch them from the database
+        let invitees = [];
+        if (eventData.invitees && eventData.invitees.length > 0) {
+            invitees = await this.userRepository.findByIds(eventData.invitees.map(invitee => invitee.id));
+        }
+
+        // Assign the creator and invitees to the event
+        const event = this.eventRepository.create({
+            ...eventData,
+            creator,
+            invitees
+        });
+
+        const savedEvent = await this.eventRepository.save(event);
+        console.log('Event created:', savedEvent);
+
         return savedEvent;
     }
 
+
     // findOne() method used to retrieves a single event by ID and includes invitees relation
     async findOne(id: number): Promise<Event> {
-        // console.log(`Finding event with ID: ${id}`);
+        // console.log(`Fetching event with ID: ${id}`);
         const event = await this.eventRepository.findOne({
             where: { id },
-            relations: ['invitees'],
+            relations: ['creator', 'invitees'],
         });
+    
         if (!event) {
             // console.log(`Event with ID ${id} not found.`);
             throw new NotFoundException(`Event with ID ${id} not found`);
         }
-        // console.log('Event found:', event);
+    
+        // console.log(`Event fetched:`, event);
         return event;
     }
 
     // findAll() method used to retrieves all events, including related invitees
     async findAll(): Promise<Event[]> {
-        // console.log('Retrieving all events...');
-        const events = await this.eventRepository.find({ relations: ['invitees'] });
-        // console.log('All events retrieved:', events);
+        // console.log('Fetching all events with creator and invitees details.');
+        const events = await this.eventRepository.find({
+            relations: ['creator', 'invitees'],
+        });
+    
+        // console.log(`Total events fetched: ${events.length}`);
+        // console.log('Events:', events);
         return events;
     }
 
@@ -70,24 +99,27 @@ export class EventService {
 
     // mergeAllOverlappingEvents() method used to retrieves all events for a specified user, ordered by startTime
     async mergeAllOverlappingEvents(userId: number): Promise<Event[]> {
-        // console.log(`Merging overlapping events for user ID ${userId}`);
+        console.log(`Merging overlapping events for user ID ${userId}`);
+        
+        // Fetch events associated with the specified creator
         const events = await this.eventRepository
             .createQueryBuilder('event')
-            .leftJoinAndSelect('event.invitees', 'user')
-            .where('user.id = :userId', { userId })
+            .leftJoinAndSelect('event.creator', 'creator')
+            .leftJoinAndSelect('event.invitees', 'invitees')
+            .where('creator.id = :userId', { userId })
             .orderBy('event.startTime', 'ASC')
             .getMany();
-
-        // console.log('Events before merging:', events);
-
+    
+        console.log('Events fetched for merging:', events);
+    
         const mergedEvents: Event[] = [];
         let currentMergedEvent = null;
-
+    
         for (const event of events) {
             if (currentMergedEvent && this.isOverlapping(currentMergedEvent, event)) {
-                // console.log('Overlapping found. Merging events:', currentMergedEvent, event);
+                console.log('Overlapping found between events:', currentMergedEvent, event);
                 currentMergedEvent = this.mergeEvents(currentMergedEvent, event);
-                // console.log('Result of merging:', currentMergedEvent);
+                console.log('Result of merging:', currentMergedEvent);
             } else {
                 if (currentMergedEvent) {
                     mergedEvents.push(currentMergedEvent);
@@ -95,18 +127,21 @@ export class EventService {
                 currentMergedEvent = event;
             }
         }
-
+    
         if (currentMergedEvent) {
             mergedEvents.push(currentMergedEvent);
         }
-
-        // console.log('Merged events:', mergedEvents);
-
+    
+        console.log('Final merged events:', mergedEvents);
+    
+        // Save the merged events to the database
         await this.eventRepository.save(mergedEvents);
+        
+        // Remove original events that were merged into new ones
         await this.removeOriginalEvents(events, mergedEvents);
-
+    
         return mergedEvents;
-    }
+    }    
 
     // isOverlapping() method used to checks if two events overlap.
     private isOverlapping(event1: Event, event2: Event): boolean {

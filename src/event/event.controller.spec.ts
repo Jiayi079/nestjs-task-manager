@@ -41,13 +41,16 @@ describe('EventController', () => {
       title: 'New Event',
       status: 'TODO',
     };
-    const createdEvent = { id: 1, ...eventData } as Event;
+    const creatorId = 1;
+    const createdEvent = { id: 1, ...eventData, creator: { id: creatorId } } as Event;
+
     jest.spyOn(service, 'create').mockResolvedValue(createdEvent);
 
-    const result = await controller.createEvent(eventData);
+    const result = await controller.createEvent(eventData, creatorId);
     expect(result).toEqual(createdEvent);
-    expect(service.create).toHaveBeenCalledWith(eventData);
+    expect(service.create).toHaveBeenCalledWith(eventData, creatorId);
   });
+
 
   // test retrieving a task by ID --> 
   // ensures that the GET /events/:id route in EventController.getEvent correctly calls EventService.findOne with the given ID
@@ -131,12 +134,12 @@ describe('EventController', () => {
       },
     ] as Event[];
 
-    // Mock the mergeAllOverlappingEvents method to return merged events
+    // mock the mergeAllOverlappingEvents method to return merged events
     jest.spyOn(service, 'mergeAllOverlappingEvents').mockResolvedValue(mergedEvents);
 
     const result = await controller.mergeEventsForUser(userId);
 
-    // Assert that the result matches the merged events
+    // assert that the result matches the merged events
     expect(result).toEqual(mergedEvents);
     expect(service.mergeAllOverlappingEvents).toHaveBeenCalledWith(userId);
   });
